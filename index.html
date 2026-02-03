@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inventario - ENTRELAZARTE</title>
+
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+  padding: 20px;
+}
+
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* Header */
+header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+h1 {
+  color: white;
+  font-size: 3em;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+  margin-bottom: 15px;
+}
+
+.subtitle {
+  color: rgba(255,255,255,0.9);
+  font-size: 1.2em;
+}
+
+/* Navegación */
+.nav-buttons {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  margin-bottom: 30px;
+  flex-wrap: wrap;
+}
+
+.btn {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+}
+
+.btn-primary { background: #3498db; color: white; }
+.btn-success { background: #27ae60; color: white; }
+.btn-danger { background: #e74c3c; color: white; }
+
+/* Panel de control */
+.control-panel {
+  background: white;
+  padding: 25px;
+  border-radius: 12px;
+  margin-bottom: 30px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.search-bar {
+  width: 100%;
+  max-width: 600px;
+  padding: 15px 20px;
+  border: 2px solid #e0e0e0;
+  border-radius: 25px;
+  font-size: 16px;
+  margin: 0 auto 20px;
+  display: block;
+  transition: all 0.3s ease;
+}
+
+.search-bar:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+/* Formulario de agregar producto */
+.add-product-form {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 10px;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.add-product-form h3 {
+  color: #2c3e50;
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.form-grid input {
+  padding: 10px 15px;
+  border: 2px solid #e0e0e0;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.form-grid input:focus {
+  outline: none;
+  border-color: #3498db;
+}
+
+.form-grid .full-width {
+  grid-column: 1 / -1;
+}
+
+/* Grid de productos */
+.productos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.producto {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  cursor: pointer;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  transition: all 0.3s ease;
+  border-left: 4px solid #3498db;
+}
+
+.producto:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 15px rgba(0,0,0,0.2);
+}
+
+.producto-nombre {
+  font-size: 1.3em;
+  font-weight: bold;
+  color: #2c3e50;
+  margin-bottom: 10px;
+}
+
+.producto-stock {
+  display: inline-block;
+  padding: 5px 12px;
+  border-radius: 15px;
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+
+.stock-alto { background: #d4edda; color: #155724; }
+.stock-medio { background: #fff3cd; color: #856404; }
+.stock-bajo { background: #f8d7da; color: #721c24; }
+
+.producto-fecha {
+  color: #7f8c8d;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 5px;
+}
+
+.producto-fechas-especiales {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #ecf0f1;
+}
+
+.fecha-especial-badge {
+  display: inline-block;
+  background: #9b59b6;
+  color: white;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  margin: 3px;
+}
+
+/* Modal */
+#modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+#modal > div {
+  background: white;
+  padding: 30px;
+  border-radius: 15px;
+  max-width: 600px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+}
+
+.close {
+  float: right;
+  color: #e74c3c;
+  cursor: pointer;
+  font-size: 28px;
+  font-weight: bold;
+  line-height: 20px;
+}
+
+.close:hover {
+  color: #c0392b;
+}
+
+.modal-header {
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid #ecf0f1;
+}
+
+.modal-section {
+  margin-bottom: 25px;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.modal-section h4 {
+  color: #2c3e50;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Timeline de fechas */
+.fechas-timeline {
+  margin-top: 15px;
+}
+
+.fecha-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  background: white;
+  border-left: 4px solid #3498db;
+  margin-bottom: 8px;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.fecha-item:hover {
+  background: #ecf0f1;
+}
+
+.fecha-date {
+  font-weight: bold;
+  color: #2c3e50;
+}
+
+.fecha-tipo {
+  font-size: 12px;
+  color: #7f8c8d;
+  background: #e8f4f8;
+  padding: 3px 8px;
+  border-radius: 12px;
+  margin-top: 3px;
+}
+
+.fecha-personalizada {
+  border-left-color: #9b59b6;
+}
+
+input, textarea {
+  width: 100%;
+  padding: 10px 15px;
+  border: 2px solid #e0e0e0;
+  border-radius: 6px;
+  margin: 5px 0;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+input:focus, textarea:focus {
+  outline: none;
+  border-color: #3498db;
+}
+
+button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  margin: 5px;
+}
+
+button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+ul {
+  list-style: none;
+  padding: 0;
+}
+
+ul li {
+  padding: 10px;
+  background: white;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  h1 { font-size: 2em; }
+  .form-grid { grid-template-columns: 1fr; }
+  .productos { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+  <!-- Header -->
+  <header>
+    <h1>💎 ENTRELAZARTE</h1>
+    <p class="subtitle">Sistema de Gestión de Inventario</p>
+  </header>
+
+  <!-- Navegación -->
+<div class="nav-buttons">
+  <button class="btn btn-danger" onclick="window.location.href='reportes.html'">
+    📊 Ver Reportes y Ventas
+  </button>
+</div>
+
+  <!-- Panel de Control -->
+  <div class="control-panel">
+    <!-- Buscador -->
+    <input 
+      id="search" 
+      class="search-bar"
+      placeholder="🔍 Buscar producto por nombre..." 
+      type="text"
+    >
+
+    <!-- Formulario Agregar Producto -->
+    <div class="add-product-form">
+      <h3>➕ Agregar Nuevo Producto</h3>
+      <div class="form-grid">
+        <input id="addNombre" placeholder="Nombre del producto" class="full-width">
+        <input id="addStock" type="number" placeholder="Stock inicial">
+        <input id="addFecha" type="date" placeholder="Fecha de alta">
+      </div>
+      <button class="btn btn-primary full-width" onclick="agregarProducto()">
+        ✨ Agregar Producto
+      </button>
+    </div>
+  </div>
+
+  <!-- Lista de Productos -->
+  <div class="productos" id="lista">
+    <!-- Se llenará dinámicamente -->
+  </div>
+
+  <!-- Modal -->
+  <div id="modal">
+    <div>
+      <span class="close" onclick="cerrar()">×</span>
+      
+      <div class="modal-header">
+        <h2 id="mNombre"></h2>
+        <p id="mStock"></p>
+      </div>
+
+      <!-- Sección de Ventas -->
+      <div class="modal-section">
+        <h4>🛒 Registrar venta</h4>
+        <input id="vPrecio" type="number" step="0.01" placeholder="Precio de venta">
+        <input id="vCantidad" type="number" placeholder="Cantidad">
+        <textarea id="vDesc" placeholder="Descripción (opcional)" rows="3"></textarea>
+        <button class="btn btn-success" onclick="registrarVenta()">Vender</button>
+      </div>
+
+      <!-- Sección de Fechas -->
+      <div class="modal-section">
+        <h4>📅 Fechas Importantes</h4>
+        <div class="fechas-timeline" id="fechasTimeline">
+          <!-- Se llenará dinámicamente -->
+        </div>
+        <hr style="margin:15px 0; border:none; border-top:1px solid #ddd;">
+        <h4 style="font-size:14px; margin-bottom:10px;">➕ Agregar fecha especial</h4>
+        <input id="fFecha" type="date">
+        <input id="adminPassFecha" type="password" placeholder="Contraseña admin">
+        <button class="btn btn-primary" onclick="agregarFecha()">Agregar fecha</button>
+      </div>
+
+      <!-- Sección de Eliminación -->
+      <div class="modal-section">
+        <h4>🗑️ Eliminar Producto</h4>
+        <input id="adminPassDel" type="password" placeholder="Contraseña admin">
+        <button class="btn btn-danger" onclick="eliminarProducto()">
+          Eliminar producto
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let productos = [], actual = null;
+let productosFechas = {}; // Cache de fechas por producto
+const $ = id => document.getElementById(id);
+
+/* ===== Cargar productos ===== */
+async function cargar(){
+  mostrarCargando(true);
+  
+  const r = await fetch('/productos');
+  productos = await r.json();
+  
+  // ✅ OPTIMIZACIÓN: Cargar todas las fechas en paralelo
+  const promesasFechas = productos.map(p => cargarFechasProducto(p.ProductoID));
+  await Promise.all(promesasFechas);
+  
+  render(productos);
+  mostrarCargando(false);
+}
+
+// Función para mostrar indicador de carga
+function mostrarCargando(mostrar) {
+  let loader = document.getElementById('loader');
+  if (!loader && mostrar) {
+    loader = document.createElement('div');
+    loader.id = 'loader';
+    loader.innerHTML = `
+      <div style="
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: white;
+        padding: 30px;
+        border-radius: 15px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        z-index: 9999;
+        text-align: center;
+      ">
+        <div style="
+          border: 4px solid #f3f3f3;
+          border-top: 4px solid #667eea;
+          border-radius: 50%;
+          width: 50px;
+          height: 50px;
+          animation: spin 1s linear infinite;
+          margin: 0 auto 15px;
+        "></div>
+        <p style="color: #2c3e50; font-weight: 600;">Cargando productos...</p>
+      </div>
+      <style>
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      </style>
+    `;
+    document.body.appendChild(loader);
+  } else if (loader && !mostrar) {
+    loader.remove();
+  }
+}
+
+/* ===== Cargar fechas de un producto (para mostrar en tarjeta) ===== */
+async function cargarFechasProducto(productoId) {
+  try {
+    const r = await fetch(`/productos/${productoId}/fechas`);
+    const fechas = await r.json();
+    productosFechas[productoId] = fechas;
+  } catch(e) {
+    productosFechas[productoId] = [];
+  }
+}
+
+function render(list){
+  $("lista").innerHTML = list.map(p => {
+    // Determinar clase de stock
+    let stockClass = 'stock-alto';
+    if(p.Stock <= 5) stockClass = 'stock-bajo';
+    else if(p.Stock <= 15) stockClass = 'stock-medio';
+    
+    // Obtener fechas especiales del producto
+    const fechasEspeciales = productosFechas[p.ProductoID] || [];
+    const fechasHTML = fechasEspeciales.length > 0 ? `
+      <div class="producto-fechas-especiales">
+        ${fechasEspeciales.map(f => `
+          <span class="fecha-especial-badge">⭐ ${f.FechaAlta}</span>
+        `).join('')}
+      </div>
+    ` : '';
+    
+    return `
+      <div class="producto" onclick="abrir(${p.ProductoID})">
+        <div class="producto-nombre">${p.Nombre}</div>
+        <div class="producto-stock ${stockClass}">
+          📦 Stock: ${p.Stock}
+        </div>
+        <div class="producto-fecha">
+          📅 Creado: ${p.FechaAlta || 'Sin fecha'}
+        </div>
+        ${fechasHTML}
+      </div>
+    `;
+  }).join('');
+}
+
+/* ===== Buscar ===== */
+$("search").oninput = e => {
+  const q = e.target.value.toLowerCase();
+  render(productos.filter(p =>
+    p.Nombre.toLowerCase().includes(q)
+  ));
+};
+
+/* ===== Agregar producto (SIN PRECIO) ===== */
+async function agregarProducto(){
+  const Nombre = $("addNombre").value.trim();
+  const Stock  = Number($("addStock").value);
+  const FechaAlta = $("addFecha").value;
+
+  if(!Nombre){
+    alert('El nombre es obligatorio');
+    return;
+  }
+
+  const res = await fetch('/productos',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      Nombre,
+      Precio: 0, // Precio se establece al vender
+      Stock,
+      FechaAlta: FechaAlta || undefined
+    })
+  });
+
+  if(!res.ok){
+    const err = await res.json();
+    alert(err.error || 'Error al agregar producto');
+    return;
+  }
+
+  $("addNombre").value = "";
+  $("addStock").value = "";
+  $("addFecha").value = "";
+
+  alert('Producto agregado exitosamente');
+  cargar();
+}
+
+/* ===== Modal ===== */
+async function abrir(id){
+  actual = productos.find(p => p.ProductoID == id);
+  $("mNombre").textContent = actual.Nombre;
+  $("mStock").textContent = "Stock disponible: " + actual.Stock + " unidades";
+  cargarFechas();
+  $("modal").style.display = 'flex';
+}
+
+function cerrar(){
+  $("modal").style.display = 'none';
+}
+
+/* ===== Ventas ===== */
+async function registrarVenta(){
+  const precio = Number($("vPrecio").value);
+  const cantidad = Number($("vCantidad").value);
+  const descripcion = $("vDesc").value;
+  
+  if(!precio || precio <= 0){
+    alert('Por favor ingresa un precio válido');
+    return;
+  }
+  
+  if(!cantidad || cantidad <= 0){
+    alert('Por favor ingresa una cantidad válida');
+    return;
+  }
+  
+  if(cantidad > actual.Stock){
+    alert(`No hay suficiente stock. Disponible: ${actual.Stock}`);
+    return;
+  }
+  
+  try {
+    // Preparar los datos en el formato correcto para el carrito
+    const items = [{
+      ProductoID: actual.ProductoID,
+      Nombre: actual.Nombre,
+      Precio: precio,
+      Cantidad: cantidad
+    }];
+    
+    const total = precio * cantidad;
+    const recibido = total; // Asumimos pago exacto desde inventario
+    const cambio = 0;
+    const fecha = new Date().toISOString().split('T')[0] + ' ' + new Date().toTimeString().split(' ')[0];
+    
+    const res = await fetch('/ventas',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        items: items,
+        total: total,
+        recibido: recibido,
+        cambio: cambio,
+        fecha: fecha,
+        descripcion: descripcion
+      })
+    });
+    
+    if(!res.ok){
+      const err = await res.json();
+      alert(err.error || 'Error al registrar venta');
+      return;
+    }
+    
+    alert('Venta registrada exitosamente');
+    $("vPrecio").value = "";
+    $("vCantidad").value = "";
+    $("vDesc").value = "";
+    cerrar();
+    cargar();
+  } catch(error) {
+    console.error('Error:', error);
+    alert('Error al registrar venta');
+  }
+}
+
+/* ===== Fechas ===== */
+async function cargarFechas(){
+  try {
+    const f = await fetch(`/productos/${actual.ProductoID}/fechas`)
+      .then(r => r.json());
+
+    const timeline = $("fechasTimeline");
+    timeline.innerHTML = '';
+    
+    // Mostrar fecha de creación
+    if(actual.FechaAlta){
+      timeline.innerHTML += `
+        <div class="fecha-item">
+          <div>
+            <div class="fecha-date">${actual.FechaAlta}</div>
+            <div class="fecha-tipo">🎂 Fecha de creación</div>
+          </div>
+        </div>
+      `;
+    }
+    
+    // Mostrar fechas personalizadas
+    f.forEach(fecha => {
+      timeline.innerHTML += `
+        <div class="fecha-item fecha-personalizada">
+          <div>
+            <div class="fecha-date">${fecha.FechaAlta}</div>
+            <div class="fecha-tipo">⭐ Fecha especial</div>
+          </div>
+          <button class="btn btn-danger" style="padding:5px 10px; font-size:12px;" onclick="eliminarFecha(${fecha.FechaID})">
+            Eliminar
+          </button>
+        </div>
+      `;
+    });
+    
+    if(timeline.innerHTML === ''){
+      timeline.innerHTML = '<p style="text-align:center; color:#7f8c8d; padding:20px;">No hay fechas registradas</p>';
+    }
+  } catch(error) {
+    console.error('Error al cargar fechas:', error);
+  }
+}
+
+async function agregarFecha(){
+  const fecha = $("fFecha").value;
+  const pass = $("adminPassFecha").value;
+  
+  if(!fecha){
+    alert('Por favor selecciona una fecha');
+    return;
+  }
+  
+  if(!pass || pass.trim() === ''){
+    alert('Por favor ingresa la contraseña de administrador');
+    return;
+  }
+  
+  try {
+    const res = await fetch(`/productos/${actual.ProductoID}/fechas`,{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'x-admin-pass': pass
+      },
+      body: JSON.stringify({ FechaAlta: fecha })
+    });
+    
+    if(!res.ok){
+      const err = await res.json();
+      alert(err.error || 'Error al agregar fecha');
+      return;
+    }
+    
+    // ✅ LIMPIAR CONTRASEÑA
+    $("adminPassFecha").value = "";
+    $("fFecha").value = "";
+    alert('Fecha agregada exitosamente');
+    
+    // Actualizar cache y recargar
+    await cargarFechasProducto(actual.ProductoID);
+    cargarFechas();
+    render(productos); // Actualizar tarjetas
+  } catch(error) {
+    console.error('Error:', error);
+    alert('Error al agregar fecha');
+  }
+}
+
+async function eliminarFecha(id){
+  const pass = $("adminPassFecha").value;
+  
+  if(!pass || pass.trim() === ''){
+    alert('Por favor ingresa la contraseña de administrador');
+    return;
+  }
+  
+  if(!confirm('¿Eliminar esta fecha?')) return;
+  
+  try {
+    const res = await fetch(`/productos/${actual.ProductoID}/fechas/${id}`,{
+      method:'DELETE',
+      headers:{ 'x-admin-pass': pass }
+    });
+    
+    if(!res.ok){
+      const err = await res.json();
+      alert(err.error || 'Error al eliminar fecha');
+      return;
+    }
+    
+    // ✅ LIMPIAR CONTRASEÑA
+    $("adminPassFecha").value = "";
+    alert('Fecha eliminada exitosamente');
+    
+    // Actualizar cache y recargar
+    await cargarFechasProducto(actual.ProductoID);
+    cargarFechas();
+    render(productos); // Actualizar tarjetas
+  } catch(error) {
+    console.error('Error:', error);
+    alert('Error al eliminar fecha');
+  }
+}
+
+/* ===== Eliminar producto ===== */
+async function eliminarProducto(){
+  if(!confirm('¿Eliminar producto?')) return;
+  
+  const pass = $("adminPassDel").value;
+  
+  if(!pass || pass.trim() === ''){
+    alert('Por favor ingresa la contraseña de administrador');
+    return;
+  }
+  
+  try {
+    const res = await fetch(`/productos/${actual.ProductoID}`, {
+      method: 'DELETE',
+      headers: { 'x-admin-pass': pass }
+    });
+    
+    if(!res.ok){
+      const err = await res.json();
+      alert(err.error || 'Error al eliminar producto');
+      return;
+    }
+    
+    alert('Producto eliminado exitosamente');
+    // ✅ LIMPIAR CONTRASEÑA
+    $("adminPassDel").value = "";
+    cerrar();
+    cargar();
+  } catch(error) {
+    console.error('Error:', error);
+    alert('Error de conexión al eliminar producto');
+  }
+}
+
+cargar();
+</script>
+
+</body>
+</html>
