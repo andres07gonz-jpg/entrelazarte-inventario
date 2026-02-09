@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Inventario - ENTRELAZARTE</title>
+<title>Inventario</title>
 
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -296,6 +296,50 @@ h1 {
   border-left-color: #9b59b6;
 }
 
+/* ✨ NUEVO: Estilos para el formulario de fecha con stock */
+.form-field {
+  margin-bottom: 15px;
+}
+
+.form-field label {
+  display: block;
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 5px;
+  font-size: 14px;
+}
+
+.form-field input {
+  width: 100%;
+  padding: 10px 15px;
+  border: 2px solid #e0e0e0;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.form-field input:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+.form-field input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+.form-field input[type="number"]::-webkit-outer-spin-button,
+.form-field input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.stock-info {
+  font-size: 13px;
+  color: #7f8c8d;
+  margin-top: 5px;
+  font-style: italic;
+}
+
 input, textarea {
   width: 100%;
   padding: 10px 15px;
@@ -355,112 +399,147 @@ ul li {
 <div class="container">
   <!-- Header -->
   <header>
-    <h1>💎 ENTRELAZARTE</h1>
-    <p class="subtitle">Sistema de Gestión de Inventario</p>
+    <h1> 💻Entrelazarte</h1>
+    <p class="subtitle">Gestión de Inventario  v.0.1.1</p>
   </header>
 
   <!-- Navegación -->
-<div class="nav-buttons">
-  <button class="btn btn-danger" onclick="window.location.href='reportes.html'">
-    📊 Ver Reportes y Ventas
-  </button>
-</div>
+  <div class="nav-buttons">
+    <button class="btn btn-danger" onclick="window.location.href='reportes.html'">
+      📊 Ver Reportes y Ventas
+    </button>
+  </div>
 
   <!-- Panel de Control -->
   <div class="control-panel">
     <!-- Buscador -->
     <input 
+      type="text" 
       id="search" 
-      class="search-bar"
-      placeholder="🔍 Buscar producto por nombre..." 
-      type="text"
+      class="search-bar" 
+      placeholder="🔍 Buscar productos por nombre..."
     >
 
-    <!-- Formulario Agregar Producto -->
+    <!-- Formulario agregar producto -->
     <div class="add-product-form">
-      <h3>➕ Agregar Nuevo Producto</h3>
+      <h3>✴️ Agregar Nuevo Producto</h3>
       <div class="form-grid">
-        <input id="addNombre" placeholder="Nombre del producto" class="full-width">
-        <input id="addStock" type="number" placeholder="Stock inicial">
-        <input id="addFecha" type="date" placeholder="Fecha de alta">
+        <input type="text" id="addNombre" placeholder="Nombre del producto" class="full-width">
+        <input type="number" id="addStock" placeholder="Stock inicial" value="0">
+        <input type="date" id="addFecha" placeholder="Fecha de alta">
       </div>
-      <button class="btn btn-primary full-width" onclick="agregarProducto()">
-        ✨ Agregar Producto
+      <button class="btn btn-success full-width" onclick="agregarProducto()">
+        Agregar Producto
       </button>
     </div>
   </div>
 
-  <!-- Lista de Productos -->
-  <div class="productos" id="lista">
-    <!-- Se llenará dinámicamente -->
-  </div>
+  <!-- Lista de productos -->
+  <div id="lista" class="productos"></div>
+</div>
 
-  <!-- Modal -->
-  <div id="modal">
-    <div>
-      <span class="close" onclick="cerrar()">×</span>
-      
-      <div class="modal-header">
-        <h2 id="mNombre"></h2>
-        <p id="mStock"></p>
-      </div>
+<!-- Modal de detalles -->
+<div id="modal">
+  <div>
+    <span class="close" onclick="cerrar()">×</span>
+    
+    <div class="modal-header">
+      <h2 id="mNombre">Producto</h2>
+      <p id="mStock" style="color: #7f8c8d; margin-top: 5px;"></p>
+    </div>
 
-      <!-- Sección de Ventas -->
-      <div class="modal-section">
-        <h4>🛒 Registrar venta</h4>
-        <input id="vPrecio" type="number" step="0.01" placeholder="Precio de venta">
-        <input id="vCantidad" type="number" placeholder="Cantidad">
-        <textarea id="vDesc" placeholder="Descripción (opcional)" rows="3"></textarea>
-        <button class="btn btn-success" onclick="registrarVenta()">Vender</button>
-      </div>
+    <!-- Sección de ventas -->
+    <div class="modal-section">
+      <h4>🛒 Registrar venta</h4>
+      <input type="number" id="vPrecio" placeholder="Precio de venta" step="0.01" min="0">
+      <input type="number" id="vCantidad" placeholder="Cantidad" min="1">
+      <textarea id="vDesc" placeholder="Descripción (opcional)" rows="2"></textarea>
+      <button class="btn btn-success" onclick="registrarVenta()">Vender</button>
+    </div>
 
-      <!-- Sección de Fechas -->
-      <div class="modal-section">
-        <h4>📅 Fechas Importantes</h4>
-        <div class="fechas-timeline" id="fechasTimeline">
-          <!-- Se llenará dinámicamente -->
+    <!-- Sección de fechas importantes -->
+    <div class="modal-section">
+      <h4>📅 Fechas Importantes</h4>
+      <div id="fechasTimeline" class="fechas-timeline"></div>
+    </div>
+
+    <!-- 🔐 CAMPO DE CONTRASEÑA COMÚN -->
+    <div class="modal-section" style="background: #fff3cd; border: 2px solid #ffc107;">
+      <h4 style="color: #856404;">🔐 Contraseña de Administrador</h4>
+      <div class="form-field">
+        <input 
+          type="password" 
+          id="adminPassFecha" 
+          placeholder="Requerida para agregar o eliminar fechas"
+          style="border-color: #ffc107; font-size: 16px; padding: 12px 15px;"
+        >
+        <div class="stock-info" style="color: #856404; margin-top: 8px;">
+          ⚠️ Usa esta contraseña para agregar nuevas fechas o eliminar las existentes
         </div>
-        <hr style="margin:15px 0; border:none; border-top:1px solid #ddd;">
-        <h4 style="font-size:14px; margin-bottom:10px;">➕ Agregar fecha especial</h4>
-        <input id="fFecha" type="date">
-        <input id="adminPassFecha" type="password" placeholder="Contraseña admin">
-        <button class="btn btn-primary" onclick="agregarFecha()">Agregar fecha</button>
+      </div>
+    </div>
+
+    <!-- ✨ Sección de agregar fecha especial CON STOCK -->
+    <div class="modal-section">
+      <h4>➕ Agregar fecha especial</h4>
+      
+      <div class="form-field">
+        <label for="fFecha">📅 Fecha especial</label>
+        <input type="date" id="fFecha">
       </div>
 
-      <!-- Sección de Eliminación -->
-      <div class="modal-section">
-        <h4>🗑️ Eliminar Producto</h4>
-        <input id="adminPassDel" type="password" placeholder="Contraseña admin">
-        <button class="btn btn-danger" onclick="eliminarProducto()">
-          Eliminar producto
-        </button>
+      <div class="form-field">
+        <label for="fStock">📦 Stock a agregar (opcional)</label>
+        <input type="number" id="fStock" placeholder="Ej: 10" min="0" value="0">
+        <div class="stock-info">
+          💡 Deja en 0 si no quieres modificar el stock
+        </div>
       </div>
+
+      <button class="btn btn-primary" onclick="agregarFecha()">
+        Agregar fecha
+      </button>
+    </div>
+
+    <!-- Sección de eliminar producto -->
+    <div class="modal-section">
+      <h4>🗑️ Eliminar Producto</h4>
+      <input type="password" id="adminPassDel" placeholder="Contraseña de administrador">
+      <button class="btn btn-danger" onclick="eliminarProducto()">
+        Eliminar Producto
+      </button>
     </div>
   </div>
 </div>
 
 <script>
-let productos = [], actual = null;
-let productosFechas = {}; // Cache de fechas por producto
 const $ = id => document.getElementById(id);
+let productos = [];
+let actual = null;
+let productosFechas = {}; // Cache de fechas por producto
 
 /* ===== Cargar productos ===== */
 async function cargar(){
-  mostrarCargando(true);
-  
-  const r = await fetch('/productos');
-  productos = await r.json();
-  
-  // ✅ OPTIMIZACIÓN: Cargar todas las fechas en paralelo
-  const promesasFechas = productos.map(p => cargarFechasProducto(p.ProductoID));
-  await Promise.all(promesasFechas);
-  
-  render(productos);
-  mostrarCargando(false);
+  mostrarLoader(true);
+  try {
+    const res = await fetch('/productos');
+    productos = await res.json();
+    
+    // Cargar fechas para cada producto
+    for(const p of productos) {
+      await cargarFechasProducto(p.ProductoID);
+    }
+    
+    render(productos);
+  } catch(e) {
+    console.error('Error al cargar productos:', e);
+    alert('Error al cargar productos. Verifica que el servidor esté corriendo.');
+  } finally {
+    mostrarLoader(false);
+  }
 }
 
-// Función para mostrar indicador de carga
-function mostrarCargando(mostrar) {
+function mostrarLoader(mostrar) {
   let loader = document.getElementById('loader');
   if (!loader && mostrar) {
     loader = document.createElement('div');
@@ -525,7 +604,7 @@ function render(list){
     const fechasHTML = fechasEspeciales.length > 0 ? `
       <div class="producto-fechas-especiales">
         ${fechasEspeciales.map(f => `
-          <span class="fecha-especial-badge">⭐ ${f.FechaAlta}</span>
+          <span class="fecha-especial-badge">🐱 ${f.FechaAlta}</span>
         `).join('')}
       </div>
     ` : '';
@@ -683,7 +762,7 @@ async function cargarFechas(){
         <div class="fecha-item">
           <div>
             <div class="fecha-date">${actual.FechaAlta}</div>
-            <div class="fecha-tipo">🎂 Fecha de creación</div>
+            <div class="fecha-tipo">♜ Fecha de creación</div>
           </div>
         </div>
       `;
@@ -695,7 +774,7 @@ async function cargarFechas(){
         <div class="fecha-item fecha-personalizada">
           <div>
             <div class="fecha-date">${fecha.FechaAlta}</div>
-            <div class="fecha-tipo">⭐ Fecha especial</div>
+            <div class="fecha-tipo">🐱 Fecha especial</div>
           </div>
           <button class="btn btn-danger" style="padding:5px 10px; font-size:12px;" onclick="eliminarFecha(${fecha.FechaID})">
             Eliminar
@@ -712,8 +791,10 @@ async function cargarFechas(){
   }
 }
 
+/* ✨ MODIFICADO: Agregar fecha con stock */
 async function agregarFecha(){
   const fecha = $("fFecha").value;
+  const stockAgregar = Number($("fStock").value) || 0;
   const pass = $("adminPassFecha").value;
   
   if(!fecha){
@@ -727,7 +808,8 @@ async function agregarFecha(){
   }
   
   try {
-    const res = await fetch(`/productos/${actual.ProductoID}/fechas`,{
+    // 1. Agregar la fecha especial
+    const resFecha = await fetch(`/productos/${actual.ProductoID}/fechas`,{
       method:'POST',
       headers:{
         'Content-Type':'application/json',
@@ -736,24 +818,60 @@ async function agregarFecha(){
       body: JSON.stringify({ FechaAlta: fecha })
     });
     
-    if(!res.ok){
-      const err = await res.json();
+    if(!resFecha.ok){
+      const err = await resFecha.json();
       alert(err.error || 'Error al agregar fecha');
       return;
     }
     
-    // ✅ LIMPIAR CONTRASEÑA
+    // 2. Si hay stock para agregar, actualizar el stock
+    let stockActualizado = false;
+    if(stockAgregar > 0) {
+      const nuevoStock = actual.Stock + stockAgregar;
+      
+      try {
+        const resStock = await fetch(`/productos/${actual.ProductoID}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ Stock: nuevoStock })
+        });
+        
+        if(resStock.ok){
+          stockActualizado = true;
+          alert(`✅ Fecha agregada y stock actualizado (+${stockAgregar} unidades)\nNuevo stock: ${nuevoStock}`);
+        } else {
+          const errStock = await resStock.json();
+          console.error('Error al actualizar stock:', errStock);
+          alert(`⚠️ Fecha agregada correctamente, pero hubo un error al actualizar el stock:\n${errStock.error || 'Error desconocido'}\n\nPor favor, actualiza el stock manualmente.`);
+        }
+      } catch(errorStock) {
+        console.error('Error en solicitud de stock:', errorStock);
+        alert(`⚠️ Fecha agregada correctamente, pero hubo un error de conexión al actualizar el stock.\n\nPor favor, actualiza el stock manualmente.`);
+      }
+    } else {
+      alert('✅ Fecha agregada exitosamente');
+    }
+    
+    // ✅ LIMPIAR CAMPOS
     $("adminPassFecha").value = "";
     $("fFecha").value = "";
-    alert('Fecha agregada exitosamente');
+    $("fStock").value = "0";
     
     // Actualizar cache y recargar
     await cargarFechasProducto(actual.ProductoID);
     cargarFechas();
-    render(productos); // Actualizar tarjetas
+    await cargar(); // Recargar todos los productos para actualizar el stock
+    
+    // Reabrir el modal con los datos actualizados
+    actual = productos.find(p => p.ProductoID === actual.ProductoID);
+    if(actual) {
+      $("mStock").textContent = "Stock disponible: " + actual.Stock + " unidades";
+    }
   } catch(error) {
     console.error('Error:', error);
-    alert('Error al agregar fecha');
+    alert('Error al agregar fecha: ' + error.message);
   }
 }
 

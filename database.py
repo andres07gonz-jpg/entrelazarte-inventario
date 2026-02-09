@@ -1,123 +1,319 @@
-import sqlite3
 import os
 from contextlib import contextmanager
 
-# Ruta de la base de datos SQLite
-DB_PATH = os.path.join(os.path.dirname(__file__), 'inventario.db')
+# Detectar si estamos en Railway (PostgreSQL) o local (SQLite)
+DATABASE_URL = os.getenv('DATABASE_URL')
 
-@contextmanager
-def get_db_connection():
-    """Obtener una conexión a la base de datos SQLite"""
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row  # Para obtener resultados como diccionarios
-    try:
-        yield conn
-        conn.commit()
-    except Exception as e:
-        conn.rollback()
-        raise e
-    finally:
-        conn.close()
+if DATABASE_URL:
+    # Producción - PostgreSQL
+    import psycopg2
+    from psycopg2.extras import RealDictCursor
+    
+    # Railway usa postgres:// pero psycopg2 necesita postgresql://
+    if DATABASE_URL.startswith("postgres://"):
+        DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+    
+    @contextmanager
+    def get_db_connection():
+        """Obtener conexión a PostgreSQL"""
+        conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
+        try:
+            yield conn
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            raise e
+        finally:
+            conn.close()
+    
+    def execute_query(query, params=None, fetch=True):
+        """Ejecutar query en PostgreSQL"""
+        # Convertir ? a %s para PostgreSQL
+        query = query.replace('?', '%s')
+        
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            
+            if params:
+                cursor.execute(query, params)
+            else:
+                cursor.execute(query)
+            
+            if fetch:
+                results = [dict(row) for row in cursor.fetchall()]
+                return results
+            else:
+                if cursor.lastrowid if hasattr(cursor, 'lastrowid') else None:
+                    return cursor.lastrowid
+                return cursor.rowcount
+    
+else:
+    # Local - SQLite
+    import sqlite3
+    
+    DB_PATH = os.path.join(os.path.dirname(__file__), 'inventario.db')
+    
+    @contextmanager
+    def get_db_connection():
+        """Obtener conexión a SQLite"""
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        try:
+            yield conn
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            raise e
+        finally:
+            conn.close()
+    
+    def execute_query(query, params=None, fetch=True):
+        """Ejecutar query en SQLite"""
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            
+            if params:
+                cursor.execute(query, params)
+            else:
+                cursor.execute(query)
+            
+            if fetch:
+                results = [dict(row) for row in cursor.fetchall()]
+                return results
+            else:
+                if cursor.lastrowid:
+                    return cursor.lastrowid
+                return cursor.rowcount
+
+def execute_transaction(operations):
+    """Ejecutar múltiples operaciones en transacción"""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        results = []
+        
+        for query, params in operations:
+            # Para PostgreSQL, convertir ? a %s
+            if DATABASE_URL:
+                query = query.replace('?', '%s')
+            
+            if params:
+                cursor.execute(query, params)
+            else:
+                cursor.execute(query)
+            
+            if query.strip().upper().startswith('SELECT'):
+                results.append([dict(row) for row in cursor.fetchall()])
+            else:
+                last_id = cursor.lastrowid if hasattr(cursor, 'lastrowid') and cursor.lastrowid else None
+                results.append(last_id if last_id else cursor.rowcount)
+        
+        return results
 
 def init_database():
-    """Inicializar la base de datos con las tablas necesarias"""
+    """Inicializar base de datos"""
     with get_db_connection() as conn:
         cursor = conn.cursor()
         
+        # Detectar tipo de base de datos para usar sintaxis correcta
+        if DATABASE_URL:
+            # PostgreSQL
+            autoincrement = "SERIAL PRIMARY KEY"
+            datetime_default = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+            decimal_type = "DECIMAL(10,2)"
+        else:
+            # SQLite
+            autoincrement = "INTEGER PRIMARY KEY AUTOINCREMENT"
+            datetime_default = "DATETIME DEFAULT CURRENT_TIMESTAMP"
+            decimal_type = "DECIMAL(10,2)"
+        
         # Crear tabla Categorias
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS Categorias (
-                CategoriaID INTEGER PRIMARY KEY AUTOINCREMENT,
-                Nombre VARCHAR(50) NOT NULL
-            )
-        """)
+        if DATABASE_URL:
+            cursor.execute(f"""
+                CREATE TABLE IF NOT EXISTS Categorias (
+                    CategoriaID SERIAL PRIMARY KEY,
+                    Nombre VARCHAR(50) NOT NULL
+                )
+            """)
+        else:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS Categorias (
+                    CategoriaID INTEGER PRIMARY KEY AUTOINCREMENT,
+                    Nombre VARCHAR(50) NOT NULL
+                )
+            """)
         
         # Crear tabla Proveedores
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS Proveedores (
-                ProveedorID INTEGER PRIMARY KEY AUTOINCREMENT,
-                Nombre VARCHAR(100),
-                Contacto VARCHAR(100)
-            )
-        """)
+        if DATABASE_URL:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS Proveedores (
+                    ProveedorID SERIAL PRIMARY KEY,
+                    Nombre VARCHAR(100),
+                    Contacto VARCHAR(100)
+                )
+            """)
+        else:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS Proveedores (
+                    ProveedorID INTEGER PRIMARY KEY AUTOINCREMENT,
+                    Nombre VARCHAR(100),
+                    Contacto VARCHAR(100)
+                )
+            """)
         
         # Crear tabla Productos
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS Productos (
-                ProductoID INTEGER PRIMARY KEY AUTOINCREMENT,
-                Nombre VARCHAR(100) NOT NULL,
-                Precio DECIMAL(10,2),
-                Stock INTEGER,
-                CategoriaID INTEGER,
-                ProveedorID INTEGER,
-                FechaAlta DATE,
-                FOREIGN KEY (CategoriaID) REFERENCES Categorias(CategoriaID),
-                FOREIGN KEY (ProveedorID) REFERENCES Proveedores(ProveedorID)
-            )
-        """)
+        if DATABASE_URL:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS Productos (
+                    ProductoID SERIAL PRIMARY KEY,
+                    Nombre VARCHAR(100) NOT NULL,
+                    Precio DECIMAL(10,2),
+                    Stock INTEGER,
+                    CategoriaID INTEGER,
+                    ProveedorID INTEGER,
+                    FechaAlta DATE,
+                    FOREIGN KEY (CategoriaID) REFERENCES Categorias(CategoriaID),
+                    FOREIGN KEY (ProveedorID) REFERENCES Proveedores(ProveedorID)
+                )
+            """)
+        else:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS Productos (
+                    ProductoID INTEGER PRIMARY KEY AUTOINCREMENT,
+                    Nombre VARCHAR(100) NOT NULL,
+                    Precio DECIMAL(10,2),
+                    Stock INTEGER,
+                    CategoriaID INTEGER,
+                    ProveedorID INTEGER,
+                    FechaAlta DATE,
+                    FOREIGN KEY (CategoriaID) REFERENCES Categorias(CategoriaID),
+                    FOREIGN KEY (ProveedorID) REFERENCES Proveedores(ProveedorID)
+                )
+            """)
         
         # Crear tabla MovimientosInventario
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS MovimientosInventario (
-                MovimientoID INTEGER PRIMARY KEY AUTOINCREMENT,
-                ProductoID INTEGER,
-                Tipo TEXT CHECK(Tipo IN ('Entrada', 'Salida')),
-                Cantidad INTEGER,
-                Fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (ProductoID) REFERENCES Productos(ProductoID)
-            )
-        """)
+        if DATABASE_URL:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS MovimientosInventario (
+                    MovimientoID SERIAL PRIMARY KEY,
+                    ProductoID INTEGER,
+                    Tipo TEXT CHECK(Tipo IN ('Entrada', 'Salida')),
+                    Cantidad INTEGER,
+                    Fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (ProductoID) REFERENCES Productos(ProductoID)
+                )
+            """)
+        else:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS MovimientosInventario (
+                    MovimientoID INTEGER PRIMARY KEY AUTOINCREMENT,
+                    ProductoID INTEGER,
+                    Tipo TEXT CHECK(Tipo IN ('Entrada', 'Salida')),
+                    Cantidad INTEGER,
+                    Fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (ProductoID) REFERENCES Productos(ProductoID)
+                )
+            """)
         
         # Crear tabla Usuarios
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS Usuarios (
-                UsuarioID INTEGER PRIMARY KEY AUTOINCREMENT,
-                Nombre VARCHAR(100),
-                CorreoElectronico VARCHAR(100),
-                Contrasena VARCHAR(100)
-            )
-        """)
+        if DATABASE_URL:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS Usuarios (
+                    UsuarioID SERIAL PRIMARY KEY,
+                    Nombre VARCHAR(100),
+                    CorreoElectronico VARCHAR(100),
+                    Contrasena VARCHAR(100)
+                )
+            """)
+        else:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS Usuarios (
+                    UsuarioID INTEGER PRIMARY KEY AUTOINCREMENT,
+                    Nombre VARCHAR(100),
+                    CorreoElectronico VARCHAR(100),
+                    Contrasena VARCHAR(100)
+                )
+            """)
         
-        # Crear tabla FechasProductos (opcional)
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS FechasProductos (
-                FechaID INTEGER PRIMARY KEY AUTOINCREMENT,
-                ProductoID INTEGER,
-                FechaAlta DATE,
-                FOREIGN KEY (ProductoID) REFERENCES Productos(ProductoID) ON DELETE CASCADE
-            )
-        """)
+        # Crear tabla FechasProductos
+        if DATABASE_URL:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS FechasProductos (
+                    FechaID SERIAL PRIMARY KEY,
+                    ProductoID INTEGER,
+                    FechaAlta DATE,
+                    FOREIGN KEY (ProductoID) REFERENCES Productos(ProductoID) ON DELETE CASCADE
+                )
+            """)
+        else:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS FechasProductos (
+                    FechaID INTEGER PRIMARY KEY AUTOINCREMENT,
+                    ProductoID INTEGER,
+                    FechaAlta DATE,
+                    FOREIGN KEY (ProductoID) REFERENCES Productos(ProductoID) ON DELETE CASCADE
+                )
+            """)
         
-        # ⭐ NUEVA: Crear tabla Ventas para registro completo
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS Ventas (
-                VentaID INTEGER PRIMARY KEY AUTOINCREMENT,
-                Fecha DATETIME NOT NULL,
-                Total DECIMAL(10,2) NOT NULL,
-                Recibido DECIMAL(10,2) NOT NULL,
-                Cambio DECIMAL(10,2) NOT NULL,
-                Descripcion TEXT
-            )
-        """)
+        # Crear tabla Ventas
+        if DATABASE_URL:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS Ventas (
+                    VentaID SERIAL PRIMARY KEY,
+                    Fecha TIMESTAMP NOT NULL,
+                    Total DECIMAL(10,2) NOT NULL,
+                    Recibido DECIMAL(10,2) NOT NULL,
+                    Cambio DECIMAL(10,2) NOT NULL,
+                    Descripcion TEXT
+                )
+            """)
+        else:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS Ventas (
+                    VentaID INTEGER PRIMARY KEY AUTOINCREMENT,
+                    Fecha DATETIME NOT NULL,
+                    Total DECIMAL(10,2) NOT NULL,
+                    Recibido DECIMAL(10,2) NOT NULL,
+                    Cambio DECIMAL(10,2) NOT NULL,
+                    Descripcion TEXT
+                )
+            """)
         
-        # ⭐ NUEVA: Crear tabla DetalleVentas (items de cada venta)
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS DetalleVentas (
-                DetalleID INTEGER PRIMARY KEY AUTOINCREMENT,
-                VentaID INTEGER NOT NULL,
-                ProductoID INTEGER NOT NULL,
-                NombreProducto VARCHAR(100) NOT NULL,
-                Cantidad INTEGER NOT NULL,
-                PrecioUnitario DECIMAL(10,2) NOT NULL,
-                Subtotal DECIMAL(10,2) NOT NULL,
-                FOREIGN KEY (VentaID) REFERENCES Ventas(VentaID) ON DELETE CASCADE,
-                FOREIGN KEY (ProductoID) REFERENCES Productos(ProductoID)
-            )
-        """)
+        # Crear tabla DetalleVentas
+        if DATABASE_URL:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS DetalleVentas (
+                    DetalleID SERIAL PRIMARY KEY,
+                    VentaID INTEGER NOT NULL,
+                    ProductoID INTEGER NOT NULL,
+                    NombreProducto VARCHAR(100) NOT NULL,
+                    Cantidad INTEGER NOT NULL,
+                    PrecioUnitario DECIMAL(10,2) NOT NULL,
+                    Subtotal DECIMAL(10,2) NOT NULL,
+                    FOREIGN KEY (VentaID) REFERENCES Ventas(VentaID) ON DELETE CASCADE,
+                    FOREIGN KEY (ProductoID) REFERENCES Productos(ProductoID)
+                )
+            """)
+        else:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS DetalleVentas (
+                    DetalleID INTEGER PRIMARY KEY AUTOINCREMENT,
+                    VentaID INTEGER NOT NULL,
+                    ProductoID INTEGER NOT NULL,
+                    NombreProducto VARCHAR(100) NOT NULL,
+                    Cantidad INTEGER NOT NULL,
+                    PrecioUnitario DECIMAL(10,2) NOT NULL,
+                    Subtotal DECIMAL(10,2) NOT NULL,
+                    FOREIGN KEY (VentaID) REFERENCES Ventas(VentaID) ON DELETE CASCADE,
+                    FOREIGN KEY (ProductoID) REFERENCES Productos(ProductoID)
+                )
+            """)
         
-        # Insertar datos de prueba si no existen
-        cursor.execute("SELECT COUNT(*) FROM Categorias")
-        if cursor.fetchone()[0] == 0:
+        # Insertar datos de prueba solo si no existen
+        cursor.execute("SELECT COUNT(*) as count FROM Categorias")
+        result = cursor.fetchone()
+        count = result['count'] if DATABASE_URL else result[0]
+        
+        if count == 0:
             # Datos de prueba - Categorias
             cursor.execute("INSERT INTO Categorias (Nombre) VALUES ('Electrónica')")
             cursor.execute("INSERT INTO Categorias (Nombre) VALUES ('Muebles')")
@@ -162,76 +358,25 @@ def init_database():
             print("✅ Datos de prueba insertados")
         
         conn.commit()
-        print("✅ Base de datos SQLite inicializada correctamente")
+        db_type = "PostgreSQL" if DATABASE_URL else "SQLite"
+        print(f"✅ Base de datos {db_type} inicializada correctamente")
 
 def test_connection():
-    """Probar la conexión a la base de datos"""
+    """Probar conexión a la base de datos"""
     try:
         with get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT sqlite_version()")
-            version = cursor.fetchone()[0]
-            print(f"✅ Conectado a SQLite versión {version}")
+            if DATABASE_URL:
+                cursor.execute("SELECT version()")
+                version = cursor.fetchone()['version']
+                print(f"✅ Conectado a PostgreSQL: {version}")
+            else:
+                cursor.execute("SELECT sqlite_version()")
+                version = cursor.fetchone()[0]
+                print(f"✅ Conectado a SQLite versión {version}")
             return True
     except Exception as err:
-        print(f"❌ Error de conexión a SQLite: {err}")
+        print(f"❌ Error de conexión: {err}")
         return False
-
-def execute_query(query, params=None, fetch=True):
-    """
-    Ejecutar una consulta SQL
     
-    Args:
-        query: Consulta SQL
-        params: Parámetros de la consulta (tupla o lista)
-        fetch: Si True, devuelve resultados. Si False, solo ejecuta
     
-    Returns:
-        Lista de resultados o ID insertado/filas afectadas
-    """
-    with get_db_connection() as conn:
-        cursor = conn.cursor()
-        
-        if params:
-            cursor.execute(query, params)
-        else:
-            cursor.execute(query)
-        
-        if fetch:
-            # Convertir Row objects a diccionarios
-            results = [dict(row) for row in cursor.fetchall()]
-            return results
-        else:
-            # Para INSERT, devolver el ID insertado
-            if cursor.lastrowid:
-                return cursor.lastrowid
-            # Para UPDATE/DELETE, devolver filas afectadas
-            return cursor.rowcount
-
-def execute_transaction(operations):
-    """
-    Ejecutar múltiples operaciones en una transacción
-    
-    Args:
-        operations: Lista de tuplas (query, params)
-    
-    Returns:
-        Lista de resultados
-    """
-    with get_db_connection() as conn:
-        cursor = conn.cursor()
-        results = []
-        
-        for query, params in operations:
-            if params:
-                cursor.execute(query, params)
-            else:
-                cursor.execute(query)
-            
-            # Guardar resultado si es SELECT
-            if query.strip().upper().startswith('SELECT'):
-                results.append([dict(row) for row in cursor.fetchall()])
-            else:
-                results.append(cursor.lastrowid if cursor.lastrowid else cursor.rowcount)
-        
-        return results
