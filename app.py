@@ -28,21 +28,23 @@ def serve_static(filename):
 # Endpoint de salud
 @app.route('/health')
 def health():
-    return jsonify({'status': 'ok', 'service': 'inventario-api', 'database': 'SQLite'})
+    return jsonify({'status': 'ok', 'service': 'inventario-api'})
+
+# Inicializar base de datos al arrancar (funciona con SQLite y PostgreSQL)
+print("Inicializando base de datos...")
+try:
+    test_connection()
+    init_database()
+    print("Base de datos lista")
+except Exception as e:
+    print(f"Error inicializando base de datos: {e}")
 
 if __name__ == '__main__':
-    # Probar conexión a la base de datos
-    test_connection()
-    
-    # Iniciar servidor
     port = int(os.getenv('PORT', 3000))
-    
-    # En producción (Railway) usa 0.0.0.0, en local usa localhost
-    host = '0.0.0.0' if os.getenv('RAILWAY_ENVIRONMENT') else '127.0.0.1'
+    host = '0.0.0.0'
     debug = not bool(os.getenv('RAILWAY_ENVIRONMENT'))
-    
-    print(f"\n🚀 Servidor iniciado en http://{host}:{port}")
-    print(f"📊 Base de datos: SQLite (inventario.db)")
-    print(f"⏹️  Presiona CTRL+C para detener el servidor\n")
-    
+
+    print(f"\nServidor iniciado en http://{host}:{port}")
+    print(f"Presiona CTRL+C para detener el servidor\n")
+
     app.run(debug=debug, host=host, port=port)
