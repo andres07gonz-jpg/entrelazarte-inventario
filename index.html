@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Inventario</title>
+<title>Inventario - ENTRELAZARTE</title>
 
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -399,8 +399,8 @@ ul li {
 <div class="container">
   <!-- Header -->
   <header>
-    <h1> 💻Entrelazarte</h1>
-    <p class="subtitle">Gestión de Inventario  v.0.1.1</p>
+    <h1>💎 ENTRELAZARTE</h1>
+    <p class="subtitle">Sistema de Gestión de Inventario</p>
   </header>
 
   <!-- Navegación -->
@@ -422,7 +422,7 @@ ul li {
 
     <!-- Formulario agregar producto -->
     <div class="add-product-form">
-      <h3>✴️ Agregar Nuevo Producto</h3>
+      <h3>➕ Agregar Nuevo Producto</h3>
       <div class="form-grid">
         <input type="text" id="addNombre" placeholder="Nombre del producto" class="full-width">
         <input type="number" id="addStock" placeholder="Stock inicial" value="0">
@@ -522,7 +522,7 @@ let productosFechas = {}; // Cache de fechas por producto
 async function cargar(){
   mostrarLoader(true);
   try {
-    const res = await fetch('/productos');
+    const res = await fetch('/productos/');
     productos = await res.json();
     
     // Cargar fechas para cada producto
@@ -584,7 +584,7 @@ function mostrarLoader(mostrar) {
 /* ===== Cargar fechas de un producto (para mostrar en tarjeta) ===== */
 async function cargarFechasProducto(productoId) {
   try {
-    const r = await fetch(`/productos/${productoId}/fechas`);
+    const r = await fetch(`/productos/${productoId}/fechas/`);
     const fechas = await r.json();
     productosFechas[productoId] = fechas;
   } catch(e) {
@@ -604,7 +604,7 @@ function render(list){
     const fechasHTML = fechasEspeciales.length > 0 ? `
       <div class="producto-fechas-especiales">
         ${fechasEspeciales.map(f => `
-          <span class="fecha-especial-badge">🐱 ${f.FechaAlta}</span>
+          <span class="fecha-especial-badge">⭐ ${f.FechaAlta}</span>
         `).join('')}
       </div>
     ` : '';
@@ -643,7 +643,7 @@ async function agregarProducto(){
     return;
   }
 
-  const res = await fetch('/productos',{
+  const res = await fetch('/productos/',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({
@@ -716,7 +716,7 @@ async function registrarVenta(){
     const cambio = 0;
     const fecha = new Date().toISOString().split('T')[0] + ' ' + new Date().toTimeString().split(' ')[0];
     
-    const res = await fetch('/ventas',{
+    const res = await fetch('/ventas/',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
@@ -750,7 +750,7 @@ async function registrarVenta(){
 /* ===== Fechas ===== */
 async function cargarFechas(){
   try {
-    const f = await fetch(`/productos/${actual.ProductoID}/fechas`)
+    const f = await fetch(`/productos/${actual.ProductoID}/fechas/`)
       .then(r => r.json());
 
     const timeline = $("fechasTimeline");
@@ -762,7 +762,7 @@ async function cargarFechas(){
         <div class="fecha-item">
           <div>
             <div class="fecha-date">${actual.FechaAlta}</div>
-            <div class="fecha-tipo">♜ Fecha de creación</div>
+            <div class="fecha-tipo">🎂 Fecha de creación</div>
           </div>
         </div>
       `;
@@ -774,7 +774,7 @@ async function cargarFechas(){
         <div class="fecha-item fecha-personalizada">
           <div>
             <div class="fecha-date">${fecha.FechaAlta}</div>
-            <div class="fecha-tipo">🐱 Fecha especial</div>
+            <div class="fecha-tipo">⭐ Fecha especial</div>
           </div>
           <button class="btn btn-danger" style="padding:5px 10px; font-size:12px;" onclick="eliminarFecha(${fecha.FechaID})">
             Eliminar
@@ -809,7 +809,7 @@ async function agregarFecha(){
   
   try {
     // 1. Agregar la fecha especial
-    const resFecha = await fetch(`/productos/${actual.ProductoID}/fechas`,{
+    const resFecha = await fetch(`/productos/${actual.ProductoID}/fechas/`,{
       method:'POST',
       headers:{
         'Content-Type':'application/json',
@@ -830,7 +830,7 @@ async function agregarFecha(){
       const nuevoStock = actual.Stock + stockAgregar;
       
       try {
-        const resStock = await fetch(`/productos/${actual.ProductoID}`, {
+        const resStock = await fetch(`/productos/${actual.ProductoID}/`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json'
@@ -886,7 +886,7 @@ async function eliminarFecha(id){
   if(!confirm('¿Eliminar esta fecha?')) return;
   
   try {
-    const res = await fetch(`/productos/${actual.ProductoID}/fechas/${id}`,{
+    const res = await fetch(`/productos/${actual.ProductoID}/fechas/${id}/`,{
       method:'DELETE',
       headers:{ 'x-admin-pass': pass }
     });
@@ -923,7 +923,7 @@ async function eliminarProducto(){
   }
   
   try {
-    const res = await fetch(`/productos/${actual.ProductoID}`, {
+    const res = await fetch(`/productos/${actual.ProductoID}/`, {
       method: 'DELETE',
       headers: { 'x-admin-pass': pass }
     });
