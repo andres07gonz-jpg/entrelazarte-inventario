@@ -1,22 +1,19 @@
-from flask import Flask, jsonify, request, send_from_directory
-from flask_cors import CORS
 import os
+from flask import Flask, jsonify, send_from_directory
+from flask_cors import CORS
 from dotenv import load_dotenv
 
-# Cargar variables de entorno PRIMERO
 load_dotenv()
 
-# Crear la app ANTES de cualquier otra cosa
 app = Flask(__name__, static_folder='.', template_folder='.')
+app.url_map.strict_slashes = False
 CORS(app)
 
-# Registrar blueprints
 from routes.productos import productos_bp
 from routes.ventas import ventas_bp
 app.register_blueprint(productos_bp, url_prefix='/productos')
 app.register_blueprint(ventas_bp, url_prefix='/ventas')
 
-# Rutas estáticas
 @app.route('/')
 def index():
     return send_from_directory('.', 'index.html')
@@ -27,18 +24,16 @@ def serve_static(filename):
 
 @app.route('/health')
 def health():
-    return jsonify({'status': 'ok', 'service': 'inventario-api'})
+    return jsonify({'status': 'ok'})
 
-# Inicializar base de datos DESPUÉS de crear la app
-from database import test_connection, init_database
 try:
-    print("Inicializando base de datos...")
+    from database import test_connection, init_database
     test_connection()
     init_database()
     print("Base de datos lista")
 except Exception as e:
-    print(f"Error inicializando base de datos: {e}")
+    print(f"Error BD: {e}")
 
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 3000))
-    app.run(debug=False, host='0.0.0.0', port=port)
+    app.run(host='0.0.0.0', port=port, debug=False)
