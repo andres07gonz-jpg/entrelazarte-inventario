@@ -2,10 +2,12 @@ import os
 from flask import Flask, jsonify, send_from_directory
 from flask_cors import CORS
 from dotenv import load_dotenv
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 load_dotenv()
 
 app = Flask(__name__, static_folder='.', template_folder='.')
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 app.url_map.strict_slashes = False
 CORS(app)
 
