@@ -615,7 +615,7 @@
    // Cargar tabla de ventas
 async function cargarVentas() {
   try {
-    const res = await fetch('/ventas?limite=50');
+    const res = await fetch('/ventas/?limite=50');
     const data = await res.json();
     
     const tbody = document.getElementById('ventasTableBody');
@@ -792,7 +792,7 @@ async function eliminarVenta(ventaID) {
   }
   
   try {
-    const res = await fetch(`/ventas/${ventaID}`, {
+    const res = await fetch(`/ventas/${ventaID}/`, {
       method: 'DELETE',
       headers: {
         'x-admin-pass': password
@@ -867,7 +867,7 @@ function mostrarNotificacion(mensaje, tipo = 'success') {
     // Ver detalle de venta
     async function verDetalle(ventaID) {
       try {
-        const res = await fetch(`/ventas/${ventaID}`);
+        const res = await fetch(`/ventas/${ventaID}/`);
         const data = await res.json();
         
         let detalleHTML = `
@@ -893,7 +893,7 @@ function mostrarNotificacion(mensaje, tipo = 'success') {
       const fechaInicio = document.getElementById('fechaInicio').value;
       const fechaFin = document.getElementById('fechaFin').value;
       
-      fetch(`/ventas?limite=1000`)
+      fetch(`/ventas/?limite=1000`)
         .then(res => res.json())
         .then(data => {
           let csv = 'ID,Fecha,Total,Recibido,Cambio,Items\n';
