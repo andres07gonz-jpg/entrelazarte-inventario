@@ -400,9 +400,9 @@
         
         // Actualizar tarjetas de estadísticas
         document.getElementById('totalVentas').textContent = data.estadisticas.total_ventas || 0;
-        document.getElementById('ingresosTotales').textContent = '$' + (data.estadisticas.ingresos_totales || 0).toFixed(2);
-        document.getElementById('promedioVenta').textContent = '$' + (data.estadisticas.promedio_venta || 0).toFixed(2);
-        document.getElementById('ventaMaxima').textContent = '$' + (data.estadisticas.venta_maxima || 0).toFixed(2);
+        document.getElementById('ingresosTotales').textContent = '$' + Number(data.estadisticas.ingresos_totales || 0).toFixed(2);
+        document.getElementById('promedioVenta').textContent = '$' + Number(data.estadisticas.promedio_venta || 0).toFixed(2);
+        document.getElementById('ventaMaxima').textContent = '$' + Number(data.estadisticas.venta_maxima || 0).toFixed(2);
         
         // Actualizar gráfica de ventas diarias
         actualizarGraficaVentasDiarias(data.ventas_diarias);
