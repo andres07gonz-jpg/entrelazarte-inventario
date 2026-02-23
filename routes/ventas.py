@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request
 from database import execute_query, execute_transaction
-from datetime import datetime
+from datetime import datetime, timedelta
 
 ventas_bp = Blueprint('ventas', __name__)
 
@@ -23,12 +23,12 @@ def registrar_venta():
             producto_id = item.get('ProductoID')
             cantidad = item.get('Cantidad', 0)
             if not producto_id or cantidad <= 0:
-                return jsonify({'error': f'Datos invalidos para producto {item.get("Nombre", "desconocido")}'}), 400
+                return jsonify({'error': f'Datos invalidos'}), 400
             producto = execute_query("SELECT Stock, Nombre FROM Productos WHERE ProductoID = ?", (producto_id,))
             if not producto:
-                return jsonify({'error': f'Producto ID {producto_id} no encontrado'}), 404
+                return jsonify({'error': f'Producto no encontrado'}), 404
             if producto[0]['Stock'] < cantidad:
-                return jsonify({'error': f'Stock insuficiente para {producto[0]["Nombre"]}'}), 400
+                return jsonify({'error': f'Stock insuficiente'}), 400
 
         venta_id = execute_query(
             "INSERT INTO Ventas (Fecha, Total, Recibido, Cambio, Descripcion) VALUES (?, ?, ?, ?, ?)",
@@ -50,7 +50,7 @@ def registrar_venta():
             operations.append(("INSERT INTO MovimientosInventario (ProductoID, Tipo, Cantidad) VALUES (?, 'Salida', ?)", (producto_id, cantidad)))
 
         execute_transaction(operations)
-        return jsonify({'mensaje': 'Venta registrada exitosamente', 'VentaID': venta_id, 'total': total, 'cambio': cambio}), 201
+        return jsonify({'mensaje': 'Venta registrada', 'VentaID': venta_id, 'total': total, 'cambio': cambio}), 201
     except Exception as e:
         print(f"Error registrar_venta: {e}")
         return jsonify({'error': str(e)}), 500
@@ -131,47 +131,84 @@ def estadisticas():
             'promedio_venta': 0, 'productos_vendidos': 0
         }
 
+        # Convertir todos los valores a float para asegurar que sean números
+        estadisticas_data['ingresos_totales'] = float(estadisticas_data.get('ingresos_totales', 0))
+        estadisticas_data['promedio_venta'] = float(estadisticas_data.get('promedio_venta', 0))
+        estadisticas_data['total_ventas'] = int(estadisticas_data.get('total_ventas', 0))
+        estadisticas_data['productos_vendidos'] = int(estadisticas_data.get('productos_vendidos', 0))
+
+        # Convertir por_dia
+        for dia in por_dia:
+            dia['ingresos'] = float(dia.get('ingresos', 0))
+            dia['ventas'] = int(dia.get('ventas', 0))
+
+        # Convertir productos_top
+        for prod in productos_top:
+            prod['cantidad_vendida'] = int(prod.get('cantidad_vendida', 0))
+            prod['ingresos'] = float(prod.get('ingresos', 0))
+
         return jsonify({
             'estadisticas': estadisticas_data,
-            'por_dia': por_dia,
+            'ventas_diarias': por_dia,
             'productos_top': productos_top
         }), 200
     except Exception as e:
         print(f"Error estadisticas: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 @ventas_bp.route('/comparativa', methods=['GET'])
 def comparativa():
     try:
         tipo = request.args.get('tipo', 'mensual')
-        now = datetime.now()
-
-        if tipo == 'mensual':
-            query = """
-                SELECT 
-                    TO_CHAR(v.Fecha, 'YYYY-MM') as periodo,
-                    COUNT(v.VentaID) as total_ventas,
-                    COALESCE(SUM(v.Total), 0) as total_monto
-                FROM Ventas v
-                GROUP BY TO_CHAR(v.Fecha, 'YYYY-MM')
-                ORDER BY periodo DESC
-                LIMIT 12
-            """
-        else:
-            query = """
-                SELECT 
-                    TO_CHAR(v.Fecha, 'IYYY-IW') as periodo,
-                    COUNT(v.VentaID) as total_ventas,
-                    COALESCE(SUM(v.Total), 0) as total_monto
-                FROM Ventas v
-                GROUP BY TO_CHAR(v.Fecha, 'IYYY-IW')
-                ORDER BY periodo DESC
-                LIMIT 12
-            """
-        comparativa_data = execute_query(query)
-        return jsonify(comparativa_data), 200
+        
+        # Obtener últimos 12 meses de datos
+        query = """
+            SELECT 
+                DATE(v.Fecha) as fecha,
+                COUNT(v.VentaID) as total_ventas,
+                COALESCE(SUM(v.Total), 0) as total_monto
+            FROM Ventas v
+            GROUP BY DATE(v.Fecha)
+            ORDER BY fecha DESC
+            LIMIT 365
+        """
+        datos = execute_query(query)
+        
+        # Agrupar por mes o semana en Python
+        from collections import defaultdict
+        agrupado = defaultdict(lambda: {'total_ventas': 0, 'total_monto': 0})
+        
+        for row in datos:
+            fecha_str = row['fecha']
+            if isinstance(fecha_str, str):
+                fecha = datetime.strptime(fecha_str.split()[0], '%Y-%m-%d')
+            else:
+                fecha = fecha_str
+                
+            if tipo == 'mensual':
+                periodo = fecha.strftime('%Y-%m')
+            else:
+                periodo = fecha.strftime('%Y-W%W')
+            
+            agrupado[periodo]['total_ventas'] += int(row.get('total_ventas', 0))
+            agrupado[periodo]['total_monto'] += float(row.get('total_monto', 0))
+        
+        # Convertir a lista
+        resultado = []
+        for periodo, valores in sorted(agrupado.items(), reverse=True)[:12]:
+            resultado.append({
+                'periodo': periodo,
+                'total_ventas': valores['total_ventas'],
+                'total_monto': valores['total_monto']
+            })
+        
+        return jsonify(resultado), 200
     except Exception as e:
         print(f"Error comparativa: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify([]), 200
 
 @ventas_bp.route('/<int:id>', methods=['GET'])
@@ -193,6 +230,6 @@ def eliminar_venta(id):
         filas = execute_query("DELETE FROM Ventas WHERE VentaID = ?", (id,), fetch=False)
         if filas == 0:
             return jsonify({'error': 'Venta no encontrada'}), 404
-        return jsonify({'mensaje': 'Venta eliminada exitosamente'}), 200
+        return jsonify({'mensaje': 'Venta eliminada'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
